@@ -117,8 +117,11 @@ type session struct {
 	version        protocol.VersionNumber
 	config         *Config
 
-	conn      connection
-	sendQueue *sendQueue
+	conn connection
+
+	sendQueue          *sendQueue
+	sendQueueBlocked   bool
+	sendQueueAvailable <-chan struct{}
 
 	streamsMap      streamManager
 	connIDManager   *connIDManager
@@ -407,7 +410,7 @@ var newClientSession = func(
 }
 
 func (s *session) preSetup() {
-	s.sendQueue = newSendQueue(s.conn)
+	s.sendQueue, s.sendQueueAvailable = newSendQueue(s.conn)
 	s.retransmissionQueue = newRetransmissionQueue(s.version)
 	s.frameParser = wire.NewFrameParser(s.version)
 	s.rttStats = &congestion.RTTStats{}
@@ -490,17 +493,28 @@ runLoop:
 
 		s.maybeResetTimer()
 
+		var sendQueueChan <-chan struct{}
+		if s.sendQueueBlocked {
+			sendQueueChan = s.sendQueueAvailable
+		}
+
 		select {
 		case closeErr = <-s.closeChan:
 			break runLoop
+		case <-sendQueueChan:
+			// fmt.Println("runLoop: send queue available")
+			s.sendQueueBlocked = false
 		case <-s.timer.Chan():
+			// fmt.Println("runLoop: timer chan")
 			s.timer.SetRead()
 			// We do all the interesting stuff after the switch statement, so
 			// nothing to see here.
 		case <-s.sendingScheduled:
+			// fmt.Println("runLoop: sending scheduled")
 			// We do all the interesting stuff after the switch statement, so
 			// nothing to see here.
 		case p := <-s.receivedPackets:
+			// fmt.Println("runLoop: received packets")
 			// Only reset the timers if this packet was actually processed.
 			// This avoids modifying any state when handling undecryptable packets,
 			// which could be injected by an attacker.
@@ -508,6 +522,7 @@ runLoop:
 				continue
 			}
 		case <-s.handshakeCompleteChan:
+			// fmt.Println("runLoop: received packets")
 			s.handleHandshakeComplete()
 		}
 
@@ -1158,6 +1173,10 @@ func (s *session) sendPackets() error {
 	var numPacketsSent int
 sendLoop:
 	for {
+		if !s.sendQueue.CanSend() {
+			s.sendQueueBlocked = true
+			return nil
+		}
 		switch sendMode {
 		case ackhandler.SendNone:
 			break sendLoop
