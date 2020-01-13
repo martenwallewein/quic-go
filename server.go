@@ -372,7 +372,7 @@ func (s *baseServer) handlePacketImpl(p *receivedPacket) bool /* was the packet 
 	}
 	// send a Version Negotiation Packet if the client is speaking a different protocol version
 	if !protocol.IsSupportedVersion(s.config.Versions, hdr.Version) {
-		s.sendVersionNegotiationPacket(p, hdr)
+		go s.sendVersionNegotiationPacket(p, hdr)
 		return false
 	}
 	if hdr.IsLongHeader && hdr.Type != protocol.PacketTypeInitial {
@@ -419,15 +419,22 @@ func (s *baseServer) handleInitialImpl(p *receivedPacket, hdr *wire.Header) (qui
 		}
 	}
 	if !s.config.AcceptToken(p.remoteAddr, token) {
-		// Log the Initial packet now.
-		// If no Retry is sent, the packet will be logged by the session.
-		(&wire.ExtendedHeader{Header: *hdr}).Log(s.logger)
-		return nil, s.sendRetry(p.remoteAddr, hdr)
+		go func() {
+			if err := s.sendRetry(p.remoteAddr, hdr); err != nil {
+				s.logger.Debugf("Error sending Retry: %s", err)
+			}
+		}()
+		return nil, nil
 	}
 
 	if queueLen := atomic.LoadInt32(&s.sessionQueueLen); queueLen >= protocol.MaxAcceptQueueSize {
 		s.logger.Debugf("Rejecting new connection. Server currently busy. Accept queue length: %d (max %d)", queueLen, protocol.MaxAcceptQueueSize)
-		return nil, s.sendServerBusy(p.remoteAddr, hdr)
+		go func() {
+			if err := s.sendServerBusy(p.remoteAddr, hdr); err != nil {
+				s.logger.Debugf("Error rejecting connection: %s", err)
+			}
+		}()
+		return nil, nil
 	}
 
 	connID, err := protocol.GenerateConnectionID(s.config.ConnectionIDLength)
@@ -512,6 +519,9 @@ func (s *baseServer) handleNewSession(sess quicSession) {
 }
 
 func (s *baseServer) sendRetry(remoteAddr net.Addr, hdr *wire.Header) error {
+	// Log the Initial packet now.
+	// If no Retry is sent, the packet will be logged by the session.
+	(&wire.ExtendedHeader{Header: *hdr}).Log(s.logger)
 	token, err := s.tokenGenerator.NewRetryToken(remoteAddr, hdr.DestConnectionID)
 	if err != nil {
 		return err
@@ -535,10 +545,8 @@ func (s *baseServer) sendRetry(remoteAddr net.Addr, hdr *wire.Header) error {
 	if err := replyHdr.Write(buf, hdr.Version); err != nil {
 		return err
 	}
-	if _, err := s.conn.WriteTo(buf.Bytes(), remoteAddr); err != nil {
-		s.logger.Debugf("Error sending Retry: %s", err)
-	}
-	return nil
+	_, err = s.conn.WriteTo(buf.Bytes(), remoteAddr)
+	return err
 }
 
 func (s *baseServer) sendServerBusy(remoteAddr net.Addr, hdr *wire.Header) error {
@@ -579,10 +587,8 @@ func (s *baseServer) sendServerBusy(remoteAddr net.Addr, hdr *wire.Header) error
 
 	replyHdr.Log(s.logger)
 	wire.LogFrame(s.logger, ccf, true)
-	if _, err := s.conn.WriteTo(raw, remoteAddr); err != nil {
-		s.logger.Debugf("Error rejecting connection: %s", err)
-	}
-	return nil
+	_, err := s.conn.WriteTo(raw, remoteAddr)
+	return err
 }
 
 func (s *baseServer) sendVersionNegotiationPacket(p *receivedPacket, hdr *wire.Header) {
