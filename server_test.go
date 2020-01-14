@@ -365,9 +365,10 @@ var _ = Describe("Server", func() {
 					return sess
 				}
 
-				phm.EXPECT().AddIfNotTaken(protocol.ConnectionID{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, sess).Return(true)
-				phm.EXPECT().Add(gomock.Any(), sess).Do(func(c protocol.ConnectionID, _ packetHandler) {
+				phm.EXPECT().Add(protocol.ConnectionID{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, sess).Return(true)
+				phm.EXPECT().Add(gomock.Any(), sess).DoAndReturn(func(c protocol.ConnectionID, _ packetHandler) bool {
 					Expect(c).To(Equal(newConnID))
+					return true
 				})
 
 				done := make(chan struct{})
@@ -407,7 +408,7 @@ var _ = Describe("Server", func() {
 
 				p := getInitial(protocol.ConnectionID{1, 2, 3, 4, 5, 6, 7, 8, 9})
 				phm.EXPECT().GetStatelessResetToken(gomock.Any())
-				phm.EXPECT().AddIfNotTaken(protocol.ConnectionID{1, 2, 3, 4, 5, 6, 7, 8, 9}, sess).Return(false)
+				phm.EXPECT().Add(protocol.ConnectionID{1, 2, 3, 4, 5, 6, 7, 8, 9}, sess).Return(false)
 				Expect(serv.handlePacketImpl(p)).To(BeFalse())
 				Expect(createdSession).To(BeTrue())
 			})
@@ -440,8 +441,7 @@ var _ = Describe("Server", func() {
 				}
 
 				phm.EXPECT().GetStatelessResetToken(gomock.Any()).Times(protocol.MaxAcceptQueueSize)
-				phm.EXPECT().AddIfNotTaken(gomock.Any(), gomock.Any()).Return(true).Times(protocol.MaxAcceptQueueSize)
-				phm.EXPECT().Add(gomock.Any(), gomock.Any()).Times(protocol.MaxAcceptQueueSize)
+				phm.EXPECT().Add(gomock.Any(), gomock.Any()).Return(true).Times(2 * protocol.MaxAcceptQueueSize)
 
 				var wg sync.WaitGroup
 				wg.Add(protocol.MaxAcceptQueueSize)
@@ -500,8 +500,7 @@ var _ = Describe("Server", func() {
 				}
 
 				phm.EXPECT().GetStatelessResetToken(gomock.Any())
-				phm.EXPECT().AddIfNotTaken(gomock.Any(), gomock.Any()).Return(true)
-				phm.EXPECT().Add(gomock.Any(), gomock.Any())
+				phm.EXPECT().Add(gomock.Any(), gomock.Any()).Return(true).Times(2)
 
 				serv.handlePacket(p)
 				Consistently(conn.dataWritten).ShouldNot(Receive())
@@ -598,8 +597,7 @@ var _ = Describe("Server", func() {
 					return sess
 				}
 				phm.EXPECT().GetStatelessResetToken(gomock.Any())
-				phm.EXPECT().AddIfNotTaken(gomock.Any(), gomock.Any()).Return(true)
-				phm.EXPECT().Add(gomock.Any(), gomock.Any())
+				phm.EXPECT().Add(gomock.Any(), gomock.Any()).Return(true).Times(2)
 				serv.createNewSession(&net.UDPAddr{}, nil, nil, nil, nil, protocol.VersionWhatever)
 				Consistently(done).ShouldNot(BeClosed())
 				cancel() // complete the handshake
@@ -660,8 +658,7 @@ var _ = Describe("Server", func() {
 				return sess
 			}
 			phm.EXPECT().GetStatelessResetToken(gomock.Any())
-			phm.EXPECT().AddIfNotTaken(gomock.Any(), sess).Return(true)
-			phm.EXPECT().Add(gomock.Any(), sess)
+			phm.EXPECT().Add(gomock.Any(), sess).Return(true).Times(2)
 			serv.createNewSession(&net.UDPAddr{}, nil, nil, nil, nil, protocol.VersionWhatever)
 			Consistently(done).ShouldNot(BeClosed())
 			close(ready)
@@ -703,8 +700,7 @@ var _ = Describe("Server", func() {
 					defer GinkgoRecover()
 					defer wg.Done()
 					phm.EXPECT().GetStatelessResetToken(gomock.Any())
-					phm.EXPECT().AddIfNotTaken(gomock.Any(), gomock.Any()).Return(true)
-					phm.EXPECT().Add(gomock.Any(), gomock.Any())
+					phm.EXPECT().Add(gomock.Any(), gomock.Any()).Return(true).Times(2)
 					serv.handlePacket(getInitialWithRandomDestConnID())
 					Consistently(conn.dataWritten).ShouldNot(Receive())
 				}()
@@ -754,8 +750,7 @@ var _ = Describe("Server", func() {
 			}
 
 			phm.EXPECT().GetStatelessResetToken(gomock.Any())
-			phm.EXPECT().AddIfNotTaken(gomock.Any(), sess).Return(true)
-			phm.EXPECT().Add(gomock.Any(), sess)
+			phm.EXPECT().Add(gomock.Any(), sess).Return(true).Times(2)
 			serv.handlePacket(p)
 			Consistently(conn.dataWritten).ShouldNot(Receive())
 			Eventually(sessionCreated).Should(BeClosed())
