@@ -13,7 +13,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-
+	"github.com/scionproto/scion/go/lib/snet"
+	"github.com/scionproto/scion/go/lib/snet/squic"
 	"github.com/marten-seemann/qpack"
 	"github.com/martenwallewein/quic-go"
 	"github.com/martenwallewein/quic-go/internal/utils"
@@ -35,6 +36,7 @@ type SCIONServer struct {
 	closed    utils.AtomicBool
 
 	logger utils.Logger
+	Local *snet.addr
 }
 
 // ListenAndServe listens on the UDP address s.Addr and calls s.Handler to handle HTTP/3 requests on incoming connections.
@@ -99,11 +101,12 @@ func (s *SCIONServer) serveImpl(tlsConf *tls.Config, conn net.PacketConn) error 
 
 	var ln quic.Listener
 	var err error
-	if conn == nil {
+	/*if conn == nil {
 		ln, err = quicListenAddr(s.Addr, tlsConf, s.QuicConfig)
 	} else {
 		ln, err = quicListen(conn, tlsConf, s.QuicConfig)
-	}
+	}*/
+	ln, err = listenScion()
 	if err != nil {
 		return err
 	}
@@ -314,12 +317,27 @@ func (s *SCIONServer) SetQuicHeaders(hdr http.Header) error {
 // ListenAndServeQUIC listens on the UDP network address addr and calls the
 // handler for HTTP/3 requests on incoming connections. http.DefaultServeMux is
 // used when handler is nil.
-func ListenAndServeSCIONServer(addr, certFile, keyFile string, handler http.Handler) error {
+func ListenAndServeSCION(addr, certFile, keyFile string, local *snet.addr, handler http.Handler) error {
 	server := &Server{
 		Server: &http.Server{
 			Addr:    addr,
 			Handler: handler,
+			Local: local,
 		},
 	}
 	return server.ListenAndServeTLS(certFile, keyFile)
+}
+
+func listenScion(address *snet.Addr) (quic.Listener, err error) {
+	if err := scion_torrent.InitScion(address.IA); err != nil {
+		return nil, err
+	}
+	if err := scion_torrent.InitSQUICCerts(); err != nil {
+		return nil, err
+	}
+	conn, err := squic.ListenSCION(nil, address, &quic.Config{KeepAlive: true})
+	if err != nil {
+		return nil, err
+	}
+	return con, nil
 }
