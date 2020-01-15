@@ -10,11 +10,14 @@ import (
 	"github.com/martenwallewein/quic-go"
 	"github.com/martenwallewein/quic-go/internal/utils"
 	"github.com/onsi/ginkgo"
+	"github.com/scionproto/scion/go/lib/sciond"
 	"github.com/scionproto/scion/go/lib/snet"
+	"github.com/scionproto/scion/go/lib/spath"
 	"io"
 	"net"
 	"net/http"
 	"runtime"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -323,6 +326,7 @@ func (s *SCIONServer) SetQuicHeaders(hdr http.Header) error {
 // handler for HTTP/3 requests on incoming connections. http.DefaultServeMux is
 // used when handler is nil.
 func ListenAndServeSCION(addr, certFile, keyFile string, local *snet.Addr, handler http.Handler) error {
+
 	server := &SCIONServer{
 		Server: &http.Server{
 			Addr:    addr,
@@ -334,13 +338,49 @@ func ListenAndServeSCION(addr, certFile, keyFile string, local *snet.Addr, handl
 }
 
 func listenScion(address *snet.Addr) (quic.Listener, error) {
+
 	if err := InitScion(address.IA); err != nil {
 		return nil, err
 	}
 	if err := InitSQUICCerts(); err != nil {
 		return nil, err
 	}
-	conn, err := ListenSCION(nil, address, &quic.Config{KeepAlive: true})
+
+	targetAddr, _ := snet.AddrFromString("19-ffaa:1:cf0,[141.44.25.151]")
+	snetAddr := address.Copy()
+	str := targetAddr.String()
+	front := str[:strings.LastIndex(str, ":")]
+	newAddr, _ := snet.AddrFromString(front)
+
+	if !snetAddr.IA.Equal(newAddr.IA) {
+		// query paths from here to there:
+		pathMgr := snet.DefNetwork.PathResolver()
+		pathSet := pathMgr.Query(context.Background(), snetAddr.IA, newAddr.IA, sciond.PathReqFlags{})
+		if len(pathSet) == 0 {
+			fmt.Errorf("No Paths")
+		}
+		// print all paths. Also pick one path. Here we chose the path with least hops:
+		i := 0
+		minLength, argMinPath := 999, (*sciond.PathReplyEntry)(nil)
+		fmt.Println("Available paths:")
+		for _, path := range pathSet {
+			fmt.Printf("[%2d] %d %s\n", i, len(path.Entry.Path.Interfaces)/2, path.Entry.Path.String())
+			if len(path.Entry.Path.Interfaces) < minLength {
+				minLength = len(path.Entry.Path.Interfaces)
+				argMinPath = path.Entry
+			}
+			i++
+		}
+
+		fmt.Println("Chosen path:", argMinPath.Path.String())
+		// we need to copy the path to the destination (destination is the whole selected path)
+		snetAddr.Path = spath.New(argMinPath.Path.FwdPath)
+		snetAddr.Path.InitOffsets()
+		snetAddr.NextHop, _ = argMinPath.HostInfo.Overlay()
+		// get a connection object using that path:
+	}
+
+	conn, err := ListenSCION(nil, snetAddr, &quic.Config{KeepAlive: true})
 	if err != nil {
 		return nil, err
 	}
