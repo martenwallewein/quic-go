@@ -18,10 +18,9 @@ import (
 	quic "github.com/martenwallewein/quic-go"
 	"github.com/martenwallewein/quic-go/internal/utils"
 	"github.com/scionproto/scion/go/lib/snet"
-	"github.com/scionproto/scion/go/lib/snet/squic"
 )
 
-func dialSCION(local, targetAddr *snet.Addr) (quic.Session, error) {
+func dialSCIONPath(local, targetAddr *snet.Addr) (quic.Session, error) {
 	if err := InitScion(local.IA); err != nil {
 		return nil, err
 	}
@@ -69,9 +68,10 @@ func dialSCION(local, targetAddr *snet.Addr) (quic.Session, error) {
 		// get a connection object using that path:
 	}
 
-	sess, err := squic.DialSCION(nil, newAddr, snetAddr, &quic.Config{
+	sess, err := DialSCION(nil, newAddr, snetAddr, &quic.Config{
 		KeepAlive: true,
 	})
+
 	if err != nil {
 		return nil, err
 	}
@@ -116,12 +116,14 @@ func SCIONNewClient(
 	}
 	// Replace existing ALPNs by H3
 	tlsConf.NextProtos = []string{nextProtoH3}
+	tlsConf.InsecureSkipVerify = true
 	if quicConfig == nil {
 		quicConfig = defaultQuicConfig
 	}
 	quicConfig.MaxIncomingStreams = -1 // don't allow any bidirectional streams
 	logger := utils.DefaultLogger.WithPrefix("h3 client")
 
+	fmt.Printf("%s", tlsConf.NextProtos)
 	return &SCIONClient{
 		hostname:      hostname, // authorityAddr("https", hostname),
 		tlsConf:       tlsConf,
@@ -138,7 +140,7 @@ func SCIONNewClient(
 func (c *SCIONClient) dial() error {
 	var err error
 	// TODO: SCION Dial
-	c.session, err = dialSCION(c.local, c.remote)
+	c.session, err = dialSCIONPath(c.local, c.remote)
 	/*if c.dialer != nil {
 		c.session, err = c.dialer("udp", c.hostname, c.tlsConf, c.config)
 	} else {

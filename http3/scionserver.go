@@ -6,6 +6,11 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"github.com/marten-seemann/qpack"
+	"github.com/martenwallewein/quic-go"
+	"github.com/martenwallewein/quic-go/internal/utils"
+	"github.com/onsi/ginkgo"
+	"github.com/scionproto/scion/go/lib/snet"
 	"io"
 	"net"
 	"net/http"
@@ -13,12 +18,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-	"github.com/scionproto/scion/go/lib/snet"
-	"github.com/scionproto/scion/go/lib/snet/squic"
-	"github.com/marten-seemann/qpack"
-	"github.com/martenwallewein/quic-go"
-	"github.com/martenwallewein/quic-go/internal/utils"
-	"github.com/onsi/ginkgo"
 )
 
 // Server is a HTTP2 server listening for QUIC connections.
@@ -36,7 +35,7 @@ type SCIONServer struct {
 	closed    utils.AtomicBool
 
 	logger utils.Logger
-	Local *snet.addr
+	Local  *snet.Addr
 }
 
 // ListenAndServe listens on the UDP address s.Addr and calls s.Handler to handle HTTP/3 requests on incoming connections.
@@ -58,7 +57,9 @@ func (s *SCIONServer) ListenAndServeTLS(certFile, keyFile string) error {
 	// We currently only use the cert-related stuff from tls.Config,
 	// so we don't need to make a full copy.
 	config := &tls.Config{
-		Certificates: certs,
+		Certificates:       certs,
+		InsecureSkipVerify: true,
+		NextProtos:         []string{nextProtoH3},
 	}
 	return s.serveImpl(config, nil)
 }
@@ -71,6 +72,7 @@ func (s *SCIONServer) Serve(conn net.PacketConn) error {
 }
 
 func (s *SCIONServer) serveImpl(tlsConf *tls.Config, conn net.PacketConn) error {
+	fmt.Println("Serve SCION")
 	if s.closed.Get() {
 		return http.ErrServerClosed
 	}
@@ -86,6 +88,7 @@ func (s *SCIONServer) serveImpl(tlsConf *tls.Config, conn net.PacketConn) error 
 	}
 	// Replace existing ALPNs by H3
 	tlsConf.NextProtos = []string{nextProtoH3}
+	tlsConf.InsecureSkipVerify = true
 	if tlsConf.GetConfigForClient != nil {
 		getConfigForClient := tlsConf.GetConfigForClient
 		tlsConf.GetConfigForClient = func(ch *tls.ClientHelloInfo) (*tls.Config, error) {
@@ -94,10 +97,12 @@ func (s *SCIONServer) serveImpl(tlsConf *tls.Config, conn net.PacketConn) error 
 				return conf, err
 			}
 			conf = conf.Clone()
+			conf.InsecureSkipVerify = true
 			conf.NextProtos = []string{nextProtoH3}
 			return conf, nil
 		}
 	}
+	fmt.Printf("%s", tlsConf.NextProtos)
 
 	var ln quic.Listener
 	var err error
@@ -106,7 +111,7 @@ func (s *SCIONServer) serveImpl(tlsConf *tls.Config, conn net.PacketConn) error 
 	} else {
 		ln, err = quicListen(conn, tlsConf, s.QuicConfig)
 	}*/
-	ln, err = listenScion()
+	ln, err = listenScion(s.Local)
 	if err != nil {
 		return err
 	}
@@ -317,27 +322,27 @@ func (s *SCIONServer) SetQuicHeaders(hdr http.Header) error {
 // ListenAndServeQUIC listens on the UDP network address addr and calls the
 // handler for HTTP/3 requests on incoming connections. http.DefaultServeMux is
 // used when handler is nil.
-func ListenAndServeSCION(addr, certFile, keyFile string, local *snet.addr, handler http.Handler) error {
-	server := &Server{
+func ListenAndServeSCION(addr, certFile, keyFile string, local *snet.Addr, handler http.Handler) error {
+	server := &SCIONServer{
 		Server: &http.Server{
 			Addr:    addr,
 			Handler: handler,
-			Local: local,
 		},
+		Local: local,
 	}
 	return server.ListenAndServeTLS(certFile, keyFile)
 }
 
-func listenScion(address *snet.Addr) (quic.Listener, err error) {
-	if err := scion_torrent.InitScion(address.IA); err != nil {
+func listenScion(address *snet.Addr) (quic.Listener, error) {
+	if err := InitScion(address.IA); err != nil {
 		return nil, err
 	}
-	if err := scion_torrent.InitSQUICCerts(); err != nil {
+	if err := InitSQUICCerts(); err != nil {
 		return nil, err
 	}
-	conn, err := squic.ListenSCION(nil, address, &quic.Config{KeepAlive: true})
+	conn, err := ListenSCION(nil, address, &quic.Config{KeepAlive: true})
 	if err != nil {
 		return nil, err
 	}
-	return con, nil
+	return conn, nil
 }

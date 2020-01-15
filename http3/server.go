@@ -14,9 +14,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/marten-seemann/qpack"
 	"github.com/martenwallewein/quic-go"
 	"github.com/martenwallewein/quic-go/internal/utils"
-	"github.com/marten-seemann/qpack"
 )
 
 // allows mocking of quic.Listen and quic.ListenAddr
@@ -123,7 +123,7 @@ func (s *Server) serveImpl(tlsConf *tls.Config, conn net.PacketConn) error {
 		tlsConf = tlsConf.Clone()
 	}
 	// Replace existing ALPNs by H3
-	tlsConf.NextProtos = []string{nextProtoH3}
+
 	if tlsConf.GetConfigForClient != nil {
 		getConfigForClient := tlsConf.GetConfigForClient
 		tlsConf.GetConfigForClient = func(ch *tls.ClientHelloInfo) (*tls.Config, error) {
@@ -136,6 +136,7 @@ func (s *Server) serveImpl(tlsConf *tls.Config, conn net.PacketConn) error {
 			return conf, nil
 		}
 	}
+	tlsConf.NextProtos = []string{nextProtoH3}
 
 	var ln quic.EarlyListener
 	var err error
