@@ -5,8 +5,8 @@ import (
 	"errors"
 
 	gomock "github.com/golang/mock/gomock"
-	"github.com/lucas-clemente/quic-go/internal/congestion"
 	"github.com/marten-seemann/qtls"
+	"github.com/martenwallewein/quic-go/internal/congestion"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )

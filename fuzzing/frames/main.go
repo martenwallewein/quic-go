@@ -9,10 +9,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/lucas-clemente/quic-go"
-	"github.com/lucas-clemente/quic-go/internal/protocol"
-	"github.com/lucas-clemente/quic-go/internal/qerr"
-	"github.com/lucas-clemente/quic-go/internal/wire"
+	"github.com/martenwallewein/quic-go"
+	"github.com/martenwallewein/quic-go/internal/protocol"
+	"github.com/martenwallewein/quic-go/internal/qerr"
+	"github.com/martenwallewein/quic-go/internal/wire"
 )
 
 const version = protocol.VersionTLS

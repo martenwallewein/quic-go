@@ -5,7 +5,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/lucas-clemente/quic-go/internal/utils"
+	"github.com/martenwallewein/quic-go/internal/utils"
 	"github.com/marten-seemann/qpack"
 
 	. "github.com/onsi/ginkgo"

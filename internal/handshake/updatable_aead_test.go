@@ -6,11 +6,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/lucas-clemente/quic-go/internal/congestion"
-	"github.com/lucas-clemente/quic-go/internal/protocol"
-	"github.com/lucas-clemente/quic-go/internal/utils"
 	"github.com/marten-seemann/qtls"
-
+	"github.com/martenwallewein/quic-go/internal/congestion"
+	"github.com/martenwallewein/quic-go/internal/protocol"
+	"github.com/martenwallewein/quic-go/internal/utils"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )

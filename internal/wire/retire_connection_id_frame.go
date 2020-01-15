@@ -3,8 +3,8 @@ package wire
 import (
 	"bytes"
 
-	"github.com/lucas-clemente/quic-go/internal/protocol"
-	"github.com/lucas-clemente/quic-go/internal/utils"
+	"github.com/martenwallewein/quic-go/internal/protocol"
+	"github.com/martenwallewein/quic-go/internal/utils"
 )
 
 // A RetireConnectionIDFrame is a RETIRE_CONNECTION_ID frame

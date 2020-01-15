@@ -14,8 +14,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/lucas-clemente/quic-go"
-	"github.com/lucas-clemente/quic-go/internal/utils"
+	"github.com/martenwallewein/quic-go"
+	"github.com/martenwallewein/quic-go/internal/utils"
 	"github.com/marten-seemann/qpack"
 )
 

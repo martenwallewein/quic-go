@@ -9,13 +9,13 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/lucas-clemente/quic-go/internal/congestion"
-	"github.com/lucas-clemente/quic-go/internal/qerr"
-	"github.com/lucas-clemente/quic-go/internal/utils"
-	"github.com/lucas-clemente/quic-go/qlog"
+	"github.com/martenwallewein/quic-go/internal/congestion"
+	"github.com/martenwallewein/quic-go/internal/qerr"
+	"github.com/martenwallewein/quic-go/internal/utils"
+	"github.com/martenwallewein/quic-go/qlog"
 
-	"github.com/lucas-clemente/quic-go/internal/protocol"
 	"github.com/marten-seemann/qtls"
+	"github.com/martenwallewein/quic-go/internal/protocol"
 )
 
 // By setting this environment variable, the key update interval can be adjusted.

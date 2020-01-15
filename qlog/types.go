@@ -3,7 +3,7 @@ package qlog
 import (
 	"fmt"
 
-	"github.com/lucas-clemente/quic-go/internal/protocol"
+	"github.com/martenwallewein/quic-go/internal/protocol"
 )
 
 type owner uint8

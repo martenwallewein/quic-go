@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/lucas-clemente/quic-go/internal/handshake"
-	"github.com/lucas-clemente/quic-go/internal/protocol"
-	"github.com/lucas-clemente/quic-go/internal/utils"
-	"github.com/lucas-clemente/quic-go/internal/wire"
+	"github.com/martenwallewein/quic-go/internal/handshake"
+	"github.com/martenwallewein/quic-go/internal/protocol"
+	"github.com/martenwallewein/quic-go/internal/utils"
+	"github.com/martenwallewein/quic-go/internal/wire"
 )
 
 type headerDecryptor interface {

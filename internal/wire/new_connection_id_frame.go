@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/lucas-clemente/quic-go/internal/utils"
+	"github.com/martenwallewein/quic-go/internal/utils"
 
-	"github.com/lucas-clemente/quic-go/internal/protocol"
+	"github.com/martenwallewein/quic-go/internal/protocol"
 )
 
 // A NewConnectionIDFrame is a NEW_CONNECTION_ID frame

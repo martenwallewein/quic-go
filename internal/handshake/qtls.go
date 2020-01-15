@@ -8,7 +8,7 @@ import (
 
 	"github.com/marten-seemann/qtls"
 
-	"github.com/lucas-clemente/quic-go/internal/congestion"
+	"github.com/martenwallewein/quic-go/internal/congestion"
 )
 
 type conn struct {
