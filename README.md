@@ -1,4 +1,11 @@
-# A QUIC implementation in pure Go
+# SCION HTTP Client and Server in QUIC go
+This repo provides a SCION HTTP client and server implementation using quic-go http/3.
+Important files:
+- http3/scionserver.go
+- http3/scionclient.go
+--- 
+
+## A QUIC implementation in pure Go
 
 <img src="docs/quic.png" width=303 height=124>
 

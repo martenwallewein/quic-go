@@ -12,7 +12,7 @@ import (
 	"github.com/onsi/ginkgo"
 	"github.com/scionproto/scion/go/lib/sciond"
 	"github.com/scionproto/scion/go/lib/snet"
-	"github.com/scionproto/scion/go/lib/spath"
+	// "github.com/scionproto/scion/go/lib/spath"
 	"io"
 	"net"
 	"net/http"
@@ -373,10 +373,11 @@ func listenScion(address *snet.Addr) (quic.Listener, error) {
 		}
 
 		fmt.Println("Chosen path:", argMinPath.Path.String())
+		// FIXME
 		// we need to copy the path to the destination (destination is the whole selected path)
-		snetAddr.Path = spath.New(argMinPath.Path.FwdPath)
-		snetAddr.Path.InitOffsets()
-		snetAddr.NextHop, _ = argMinPath.HostInfo.Overlay()
+		// snetAddr.Path = spath.New(argMinPath.Path.FwdPath)
+		// snetAddr.Path.InitOffsets()
+		// snetAddr.NextHop, _ = argMinPath.HostInfo.Overlay()
 		// get a connection object using that path:
 	}
 

@@ -20,6 +20,8 @@ import (
 	"github.com/scionproto/scion/go/lib/snet"
 )
 
+var Path string
+
 func dialSCIONPath(local, targetAddr *snet.Addr) (quic.Session, error) {
 	if err := InitScion(local.IA); err != nil {
 		return nil, err
@@ -62,6 +64,7 @@ func dialSCIONPath(local, targetAddr *snet.Addr) (quic.Session, error) {
 		}
 
 		fmt.Println("Chosen path:", argMinPath.Path.String())
+		Path = argMinPath.Path.String()
 		// we need to copy the path to the destination (destination is the whole selected path)
 		snetAddr.Path = spath.New(argMinPath.Path.FwdPath)
 		snetAddr.Path.InitOffsets()
